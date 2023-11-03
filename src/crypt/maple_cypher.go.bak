@@ -1,0 +1,83 @@
+package crypt
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"errors"
+)
+
+/**
+  @author : Jerbe - The porter from Earth
+  @time : 2023/10/24 12:58
+  @describe :
+*/
+
+// smallerLen 长度过短
+var smallerLen = errors.New("MapleCypher: crypt error: output smaller than input")
+
+// NewMapleCypher 返回一个枫叶传说专用传输加密器
+func NewMapleCypher(key, iv []byte, version uint16) (*MapleCypher, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	nv := make([]byte, 4*4)
+	for i := 0; i < len(nv); i++ {
+		nv[i] = iv[i%4]
+	}
+
+	stream := cipher.NewOFB(block, nv)
+	version = (version >> 8 & 0xFF) | (version << 8 & 0xFF00)
+	return &MapleCypher{key: key, iv: iv, ofbStream: stream, version: version}, nil
+}
+
+// MapleCypher 枫叶传说专用传输加密器
+type MapleCypher struct {
+	key     []byte
+	iv      []byte
+	version uint16
+
+	ofbStream cipher.Stream
+}
+
+// Iv 返回该暗号向量
+func (a *MapleCypher) Iv() []byte {
+	return a.iv
+}
+
+// Crypt 进行加密
+func (a *MapleCypher) Crypt(dst, src []byte) error {
+	if len(dst) < len(src) {
+		return smallerLen
+	}
+	a.ofbStream.XORKeyStream(dst, src)
+	return nil
+}
+
+// PacketHeader 根据数据长度,生成包头部信息
+func (a *MapleCypher) PacketHeader(length int) []byte {
+	iv := a.iv
+	iiv := ((int(iv[3]) & 0xFF) | ((int(iv[2]) << 8) & 0xFF00)) ^ int(a.version)
+	mlength := ((length << 8 & 0xFF00) | (length >> 8)) ^ iiv
+	return []byte{(byte)(iiv >> 8 & 0xFF), (byte)(iiv & 0xFF), (byte)(mlength >> 8 & 0xFF), (byte)(mlength & 0xFF)}
+}
+
+// PacketLength 获取包长度
+// @param header 头部信息
+func (a *MapleCypher) PacketLength(header int) int {
+	packetLength := (header >> 16) ^ (header & 0xFFFF)
+	packetLength = (packetLength << 8 & 0xFF00) | (packetLength >> 8 & 0xFF)
+	return packetLength
+}
+
+// CheckPacketHeader 检测包头是否合法
+func (a *MapleCypher) CheckPacketHeader(header int) bool {
+	return a.CheckHashHeader([]byte{byte(header >> 24 & 0xFF), byte(header >> 16 & 0xFF)})
+}
+
+// CheckHashHeader 检测该消息是否包含头信息
+func (a *MapleCypher) CheckHashHeader(packet []byte) bool {
+	return packet[0]^a.iv[2]&0xFF == byte(a.version>>8)&0xFF &&
+		packet[1]^a.iv[3]&0xFF == byte(a.version&0xFF)
+}

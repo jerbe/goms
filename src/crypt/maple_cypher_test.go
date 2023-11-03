@@ -1,0 +1,54 @@
+package crypt
+
+import (
+	"fmt"
+	"testing"
+)
+
+/**
+  @author : Jerbe - The porter from Earth
+  @time : 2023/10/24 13:45
+  @describe :
+*/
+
+func TestMapleCypherSignal(t *testing.T) {
+
+	key := []byte{0x13, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0xB4, 0x00, 0x00, 0x00, 0x1B, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00, 0x52, 0x00, 0x00, 0x00}
+
+	ivRecv := []byte{1, 0x5F, 4, 0x3F}
+	//ivSend := []byte{1, 0x5F, 4, 0x3F}
+	a, _ := NewMapleCypher(key, ivRecv, 0xFFFF-79)
+
+	src := []byte{'h', 'e', 'l', 'l', 'o'}
+	//dist := make([]byte, len(src))
+	fmt.Println(string(src))
+	a.Crypt(src, src)
+	fmt.Println(string(src))
+	a.Crypt(src, src)
+	fmt.Println(string(src))
+}
+
+func TestMapleCypher(t *testing.T) {
+
+	key := []byte{0x13, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, byte(0xB4), 0x00, 0x00, 0x00, 0x1B, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00, 0x52, 0x00, 0x00, 0x00}
+
+	ivRecv := []byte{1, 0x5F, 4, 0x3F}
+	//ivSend := []byte{1, 0x5F, 4, 0x3F}
+	a, err := NewMapleCypher(key, ivRecv, 0xFFFF-79)
+
+	b, err := NewMapleCypher(key, ivRecv, 79)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src := []byte{'h', 'e', 'l', 'l', 'o'}
+	//dist := make([]byte, len(src))
+	a.Crypt(src, src)
+	fmt.Println(1, string(src))
+	b.Crypt(src, src)
+	fmt.Println(11, string(src))
+	a.Crypt(src, src)
+	fmt.Println(2, string(src))
+	b.Crypt(src, src)
+	fmt.Println(22, string(src))
+}
